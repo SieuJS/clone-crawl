@@ -1,10 +1,10 @@
 const axios = require("axios");
-
+const mainServer = "http://localhost:5000";
 const postConference = async (conference) => {
     const isSuccess = 
         await axios
             .post(
-                "https://conference-searching.onrender.com/api/v1/post/etl",
+                mainServer+"/api/v1/post/etl",
                 conference
             )
             .then((response) => {
