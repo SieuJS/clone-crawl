@@ -235,10 +235,9 @@ const crawlNewConferenceById = async (job) => {
       let NotificationDate = [];
       let CameraReady = [];
       for (let link of links) {
-        let { submissionDate, notificationDate, cameraReady } =
-          await getImportantDates(browser, link);
-
-        if (submissionDate) {
+        let importantDate= await getImportantDates(browser, link);
+        if (importantDate) {
+          let { submissionDate, notificationDate, cameraReady } = importantDate;
           SubmissionDate = SubmissionDate.concat(submissionDate);
           NotificationDate = NotificationDate.concat(notificationDate);
           CameraReady = CameraReady.concat(cameraReady);
