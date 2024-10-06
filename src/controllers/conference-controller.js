@@ -93,7 +93,6 @@ const crawlConferenceById = async (job) => {
       })),
     };
 
-
     // So sánh và cập nhật cơ sở dữ liệu nếu có sự thay đổi
     const updates = {
       SubmissonDate: [],
@@ -206,7 +205,6 @@ const crawlNewConferenceById = async (job) => {
         message: "Conference not found",
       };
     }
-
     // Trường hợp conf đã có link
     if (conference.Links[0]) {
       // Cào important dates
@@ -233,27 +231,31 @@ const crawlNewConferenceById = async (job) => {
         conference,
         4
       );
-      let importantDate ;
+      let SubmissionDate = [];
+      let NotificationDate = [];
+      let CameraReady = [];
       for (let link of links) {
-        importantDate = await getImportantDates(browser, link);
-      
+        let { submissionDate, notificationDate, cameraReady } =
+          await getImportantDates(browser, link);
+
+        if (submissionDate) {
+          SubmissionDate = SubmissionDate.concat(submissionDate);
+          NotificationDate = NotificationDate.concat(notificationDate);
+          CameraReady = CameraReady.concat(cameraReady);
+        }
+      }
 
       // Update to database
-      if (importantDate) {
-        console.log(">> Important date: ", importantDate);
-        await Conference.findByIdAndUpdate(job.conf_id, {
-          $push: {
-        SubmissonDate: conference.SubmissonDate.concat(importantDate.submissionDate),
-        NotificationDate: conference.NotificationDate.concat(importantDate.notificationDate),
-        CameraReady: conference.CameraReady.concat(importantDate.cameraReady),
-          },
-          $push: {
-        Links: link,
-          },
-        });
-        console.log(">> Conference updated successfully");
-      }
-      } 
+
+      await Conference.findByIdAndUpdate(job.conf_id, {
+        $set: {
+          SubmissonDate: SubmissionDate,
+          NotificationDate: NotificationDate,
+          CameraReady: CameraReady,
+          Links: links,
+        },
+      });
+      console.log(">> Conference updated successfully");
     }
 
     // Pineline
