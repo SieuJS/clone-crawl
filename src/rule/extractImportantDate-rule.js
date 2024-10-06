@@ -1054,7 +1054,6 @@ const getImportantDates = async (browser, link) => {
         
 
         //-------------------------------------
-
         let page = await browser.newPage();
         await page.goto(link, { waitUntil: "domcontentloaded" });
 

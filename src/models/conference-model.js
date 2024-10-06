@@ -17,6 +17,9 @@ var conferenceSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    SourceRank : {
+        type : JSON
+    },
     Note: {
         type: String,
         required: true

@@ -27,6 +27,8 @@ const { stringify } = require("csv-stringify/sync");
 const safeConferenceList = require("../config/safeList");
 const { getType } = require("../rule/extractType-rule");
 const { updateJobProgress } = require("../services/job-service");
+const { convertToObject } = require("typescript");
+const { postConference } = require("../services/conference-service");
 
 // Handle job update now
 const crawlConferenceById = async (job) => {
@@ -49,7 +51,7 @@ const crawlConferenceById = async (job) => {
     // Cào important dates
     await updateJobProgress(job._id, 10, "Crawling important dates");
     let newImportantDates;
-    if (conference.Links[0].length > 0) {
+    if (conference.Links[0]) {
       newImportantDates = await getImportantDates(browser, conference.Links[0]);
     } else {
       return {
@@ -72,7 +74,6 @@ const crawlConferenceById = async (job) => {
         "Crawling important dates successfully"
       );
     }
-    console.log(newImportantDates);
 
     const oldImportantDates = {
       submissionDate: conference.SubmissonDate.map((item) => ({
@@ -92,7 +93,6 @@ const crawlConferenceById = async (job) => {
       })),
     };
 
-    console.log(oldImportantDates);
 
     // So sánh và cập nhật cơ sở dữ liệu nếu có sự thay đổi
     const updates = {
@@ -198,7 +198,7 @@ const crawlNewConferenceById = async (job) => {
   console.log(">> Browser is opening ...");
 
   try {
-    const conference = await Conference.findById(job.conf_id);
+    let conference = await Conference.findById(job.conf_id);
 
     if (!conference) {
       return {
@@ -208,7 +208,7 @@ const crawlNewConferenceById = async (job) => {
     }
 
     // Trường hợp conf đã có link
-    if (conference.Links[0].length > 0) {
+    if (conference.Links[0]) {
       // Cào important dates
       await updateJobProgress(job._id, 10, "Crawling important dates");
       setTimeout(() => {}, 4000);
@@ -233,11 +233,29 @@ const crawlNewConferenceById = async (job) => {
         conference,
         4
       );
+      let importantDate ;
       for (let link of links) {
-        let importantDate = await getImportantDates(browser, link);
-      }
+        importantDate = await getImportantDates(browser, link);
+      
 
       // Update to database
+      if (importantDate) {
+        console.log(">> Important date: " , importantDate);
+        Conference.findByIdAndUpdate(job.conf_id, {
+          $set: {
+            SubmissionDate: conference.SubmissonDate.concat( importantDate.submissionDate),
+            NotificationDate: conference.NotificationDate.concat( importantDate.notificationDate),
+            CameraReady: conference.CameraReady.concat(importantDate.cameraReady),
+          },
+          $push: {
+            Links: link,
+          }, 
+        });;
+        let toSent = await Conference.findById(job.conf_id);
+        await postConference(toSent);
+        await updateJobProgress(job._id, 70, "Save new conference successfully");
+      }
+      } 
     }
 
     // Pineline
