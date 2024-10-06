@@ -22,23 +22,18 @@ var conferenceSchema = new mongoose.Schema({
     },
     Note: {
         type: String,
-        required: true
     },
     DBLP: {
         type: String,
-        required: true
     },
     PrimaryFoR: {
-        type: String,
-        required: true
+        type: Array,
     },
     Comments: {
         type: String,
-        required: true
     },
     AverageRating: {
         type: String,
-        required: true
     },
     Links: {
         type: Array

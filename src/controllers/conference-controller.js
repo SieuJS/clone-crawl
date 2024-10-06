@@ -21,6 +21,7 @@ const {
 } = require("../exceptions/conference-exception");
 const { getImportantDates } = require("../rule/extractImportantDate-rule");
 const { getConferenceDates } = require("../rule/extractConferenceDate-rule");
+const { getCallForPaper } = require("../rule/extractCallForPaper-rule");
 const { getLocation, isInDict } = require("../rule/extractLocation-rule");
 const startBrowser = require("../untils/browser");
 const { stringify } = require("csv-stringify/sync");
@@ -194,97 +195,106 @@ const crawlConferenceById = async (job) => {
 // Handle job import conf
 const crawlNewConferenceById = async (job) => {
   let browser = await startBrowser();
-  console.log(">> Browser is opening ...");
+  console.log(">> Browser is opening ...")
 
   try {
-    let conference = await Conference.findById(job.conf_id);
+      const conference = await Conference.findById(job.conf_id);
 
-    if (!conference) {
-      return {
-        status: false,
-        message: "Conference not found",
-      };
-    }
-    // Trường hợp conf đã có link
-    if (conference.Links[0]) {
-      // Cào important dates
-      await updateJobProgress(job._id, 10, "Crawling important dates");
-      setTimeout(() => {}, 4000);
-      //Cào Conference Dates
-      await updateJobProgress(job._id, 30, "Crawling conference dates");
-      setTimeout(() => {}, 2000);
-      //Cào Location
-      await updateJobProgress(job._id, 50, "Crawling location");
-      setTimeout(() => {}, 2000);
-      //Cào Type
-      await updateJobProgress(job._id, 60, "Crawling type");
-      setTimeout(() => {}, 2000);
-      //Cào cfp
-      await updateJobProgress(job._id, 80, "Crawling call for papers");
-      setTimeout(() => {}, 2000);
+      if (!conference) {
+          return {
+              status: false,
+              message: "Conference not found"
+          };
+      }
+      let links = conference.Links; 
 
-      // Update to database
-    } else {
-      // Trường hợp conf chưa có link
-      let links = await webScraperService.searchConferenceLinksByTitle(
-        browser,
-        conference,
-        4
-      );
-      let SubmissionDate = [];
-      let NotificationDate = [];
-      let CameraReady = [];
-      for (let link of links) {
-        let importantDate= await getImportantDates(browser, link);
-        if (importantDate) {
-          let { submissionDate, notificationDate, cameraReady } = importantDate;
-          SubmissionDate = SubmissionDate.concat(submissionDate);
-          NotificationDate = NotificationDate.concat(notificationDate);
-          CameraReady = CameraReady.concat(cameraReady);
-        }
+
+      if (!links[0]) {
+          console.log(">> Conference has no link, process to get new link")
+          links = await webScraperService.searchConferenceLinksByTitle(browser, conference, 4);
       }
 
-      // Update to database
+      for (link of links) {
+        await updateJobProgress(job._id, 10, "Crawling important dates")
+        let importantDates = await getImportantDates(browser, link);
 
-      await Conference.findByIdAndUpdate(job.conf_id, {
-        $set: {
-          SubmissonDate: SubmissionDate,
-          NotificationDate: NotificationDate,
-          CameraReady: CameraReady,
-          Links: links,
-        },
-      });
-      console.log(">> Conference updated successfully");
-    }
+        await updateJobProgress(job._id, 30, "Crawling conference dates")
+        let conferenceDates = await getConferenceDates(browser, link, conference.Title);
+        
+        await updateJobProgress(job._id, 50, "Crawling location")
+        let location = await getLocation(browser, link)
 
-    // Pineline
-    await updateJobProgress(job._id, 80, "ETL data to destination");
-    const isPinelineSuccess = await dataPinelineAPI(job.conf_id);
-    if (isPinelineSuccess) {
-      await updateJobProgress(
-        job._id,
-        90,
-        "ETL data to destination successfully"
-      );
-      return {
-        status: true,
-        message: "Update conference successfully",
-      };
-    } else {
-      return {
-        status: false,
-        message: "Something occurred in data pipeline",
-      };
-    }
+        await updateJobProgress(job._id, 60, "Crawling type")
+        let type = await getType(browser, link);
+
+        await updateJobProgress(job._id, 80, "Crawling call for papers")
+        let callForPaper = await getCallForPaper(browser, link, conference.Acronym);       
+        conference.Links = links; 
+
+        if (importantDates) {
+          console.log(">>Craw valid with important dates")
+
+          conference.SubmissonDate = conference.SubmissonDate.concat( importantDates.submissionDate);
+          conference.NotificationDate = conference.NotificationDate.concat( importantDates.notificationDate);
+          conference.CameraReady = conference.CameraReady.concat( importantDates.cameraReady);
+        }
+
+        if (conferenceDates) {
+          console.log(">>Craw valid with 2 fields")
+          conference.Links = links; 
+          conference.ConferenceDate = conference.ConferenceDate.concat(conferenceDates);
+        }
+        if(callForPaper) {
+        
+          console.log(">>Craw valid with call for paper")
+          conference.CallForPaper = callForPaper;
+        }
+
+        if (type) {
+          console.log(">>Craw valid with type")
+          conference.Type = type;
+        }
+        if (location) {
+          console.log(">>Craw valid with location")
+          conference.Location = location
+        }
+      } 
+      await conference.save();
+      // Pineline
+      await updateJobProgress(job._id, 80, "ETL data to destination")
+      const isPinelineSuccess = await dataPinelineAPI(job.conf_id)
+      if(isPinelineSuccess) {
+          await updateJobProgress(job._id, 100, "ETL data to destination successfully")
+          return {
+              status: true,
+              message: "Update conference successfully"
+          };
+      } else {
+          return {
+              status: false,
+              message: "Something occurred in data pipeline"
+          }
+      }
   } catch (error) {
-    console.log("Error in Conference controller/crawlConferenceById: " + error);
-    return {
-      status: false,
-      message: error,
-    };
+      console.log("Error in Conference controller/crawlConferenceById: " + error);
+      await Conference.findByIdAndUpdate(job.conf_id, {
+          Links: [],
+          ConferenceDate: [],
+          SubmissonDate: [],
+          NotificationDate: [],
+          CameraReady: [],
+          CallForPaper: [],
+          Location: "",
+          Type: ""
+      })
+      await dataPinelineAPI(job.conf_id)
+      return {
+          status: false,
+          message: error
+      };
   } finally {
-    await browser.close();
-    console.log(">> Browser is closed");
+      await browser.close();
+      console.log(">> Browser is closed")
   }
 };
 
