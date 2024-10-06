@@ -240,20 +240,18 @@ const crawlNewConferenceById = async (job) => {
 
       // Update to database
       if (importantDate) {
-        console.log(">> Important date: " , importantDate);
-        Conference.findByIdAndUpdate(job.conf_id, {
-          $set: {
-            SubmissionDate: conference.SubmissonDate.concat( importantDate.submissionDate),
-            NotificationDate: conference.NotificationDate.concat( importantDate.notificationDate),
-            CameraReady: conference.CameraReady.concat(importantDate.cameraReady),
+        console.log(">> Important date: ", importantDate);
+        await Conference.findByIdAndUpdate(job.conf_id, {
+          $push: {
+        SubmissonDate: conference.SubmissonDate.concat(importantDate.submissionDate),
+        NotificationDate: conference.NotificationDate.concat(importantDate.notificationDate),
+        CameraReady: conference.CameraReady.concat(importantDate.cameraReady),
           },
           $push: {
-            Links: link,
-          }, 
-        });;
-        let toSent = await Conference.findById(job.conf_id);
-        await postConference(toSent);
-        await updateJobProgress(job._id, 70, "Save new conference successfully");
+        Links: link,
+          },
+        });
+        console.log(">> Conference updated successfully");
       }
       } 
     }
