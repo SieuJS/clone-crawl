@@ -211,7 +211,7 @@ const crawlNewConferenceById = async (job) => {
 
       if (!links[0]) {
           console.log(">> Conference has no link, process to get new link")
-          links = await webScraperService.searchConferenceLinksByTitle(browser, conference, 4);
+          links = await webScraperService.searchConferenceLinksByTitle(browser, conference, 2);
       }
 
       for (link of links) {
@@ -233,7 +233,6 @@ const crawlNewConferenceById = async (job) => {
 
         if (importantDates) {
           console.log(">>Craw valid with important dates")
-
           conference.SubmissonDate = conference.SubmissonDate.concat( importantDates.submissionDate);
           conference.NotificationDate = conference.NotificationDate.concat( importantDates.notificationDate);
           conference.CameraReady = conference.CameraReady.concat( importantDates.cameraReady);

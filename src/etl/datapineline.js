@@ -174,8 +174,9 @@ const dataPinelineAPI = async (conferenceId) => {
     });
 
 
+
     for (const conference of allConference) {
-        if (conference.Links.length == 1) {
+        if (conference.Links[0]) {
             const organizations = [
                 {
                     name: "default",
@@ -213,7 +214,7 @@ const dataPinelineAPI = async (conferenceId) => {
                 organizations: organizations? organizations : [""],
                 source: conference.Source
             };  
-
+            console.log("Post to main API")
             return await postConference(processedConf)
 
         } else {
