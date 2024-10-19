@@ -221,7 +221,6 @@ const getType = async (browser, link) => {
         const containsKeyword = (content, keywords) => {
             for (const keyword of keywords) {
                 if (content.toLowerCase().includes(keyword.toLowerCase())) {
-                    console.log(`Found keyword: ${keyword}`);
                     return true;
                 }
             }

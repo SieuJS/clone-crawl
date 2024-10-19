@@ -160,6 +160,7 @@ const processQueue = async () => {
 
 const monitorChanges = async () => {
   try {
+    
     await mongoose.connect(mongoUrl, {
       useNewUrlParser: true,
       useUnifiedTopology: true,

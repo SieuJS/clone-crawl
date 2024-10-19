@@ -212,7 +212,7 @@ const searchConferenceLinksByTitle = async (browser, conference, maxLinks) => {
         console.log(
             "Error in web-scraper-service/searchConferenceLinks: " + error
         );
-        // Log conference lỗi ra một collection riêng
+        // Log conference lỗi ra một collection riêng 
     }
 };
 

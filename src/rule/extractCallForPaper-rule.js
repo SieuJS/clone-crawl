@@ -27,7 +27,8 @@ const getCallForPaper = async (browser, link, acronym) => {
         }
 
         await page.close();
-        return callForPaper
+        return typeof(callForPaper) === "string" ? callForPaper : "";
+
     } catch (error) {
         return ""
     }

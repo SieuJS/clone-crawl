@@ -212,27 +212,47 @@ const crawlNewConferenceById = async (job) => {
       if (!links[0]) {
           console.log(">> Conference has no link, process to get new link")
           links = await webScraperService.searchConferenceLinksByTitle(browser, conference, 2);
+          conference.Links = links;
+          await conference.save();
       }
+      let importantDateChange = false;
+      let conferenceDateChange = false;
+      let callForPaperChange = false;
+      let locationChange = false;
+      let typeChange = false;
+      let progress = 0;
+      let importantDates, conferenceDates, location, type, callForPaper;
 
       for (link of links) {
-        await updateJobProgress(job._id, 10, "Crawling important dates")
-        let importantDates = await getImportantDates(browser, link);
+        if(!importantDateChange){
 
-        await updateJobProgress(job._id, 30, "Crawling conference dates")
-        let conferenceDates = await getConferenceDates(browser, link, conference.Title);
-        
-        await updateJobProgress(job._id, 50, "Crawling location")
-        let location = await getLocation(browser, link)
+          await updateJobProgress(job._id, 10, "Crawling important dates")
+          importantDates = await getImportantDates(browser, link);
+        }
+        if(!conferenceDateChange){
+          await updateJobProgress(job._id, 30, "Crawling conference dates")
+          conferenceDates = await getConferenceDates(browser, link, conference.Title);
 
-        await updateJobProgress(job._id, 60, "Crawling type")
-        let type = await getType(browser, link);
+        }
 
-        await updateJobProgress(job._id, 80, "Crawling call for papers")
-        let callForPaper = await getCallForPaper(browser, link, conference.Acronym);       
-        conference.Links = links; 
+        if(!locationChange){
+          await updateJobProgress(job._id, 50, "Crawling location")
+          location = await getLocation(browser, link)
+        }
+        if(!typeChange){
+
+          await updateJobProgress(job._id, 60, "Crawling type")
+          type = await getType(browser, link);
+        }
+        if(!callForPaperChange){
+
+          await updateJobProgress(job._id, 80, "Crawling call for papers")
+          callForPaper = await getCallForPaper(browser, link, conference.Acronym);       
+        }
 
         if (importantDates) {
           console.log(">>Craw valid with important dates")
+          importantDateChange = true;
           conference.SubmissonDate = conference.SubmissonDate.concat( importantDates.submissionDate);
           conference.NotificationDate = conference.NotificationDate.concat( importantDates.notificationDate);
           conference.CameraReady = conference.CameraReady.concat( importantDates.cameraReady);
@@ -240,22 +260,28 @@ const crawlNewConferenceById = async (job) => {
 
         if (conferenceDates) {
           console.log(">>Craw valid with 2 fields")
+          conferenceDateChange = true;
           conference.Links = links; 
           conference.ConferenceDate = conference.ConferenceDate.concat(conferenceDates);
         }
         if(callForPaper) {
-        
+          callForPaperChange = true;
           console.log(">>Craw valid with call for paper")
           conference.CallForPaper = callForPaper;
         }
 
         if (type) {
+          typeChange = true;
           console.log(">>Craw valid with type")
           conference.Type = type;
         }
         if (location) {
+          locationChange = true;
           console.log(">>Craw valid with location")
           conference.Location = location
+        }
+        if(importantDateChange || conferenceDateChange || callForPaperChange || locationChange || typeChange) {
+          break;
         }
       } 
       await conference.save();
